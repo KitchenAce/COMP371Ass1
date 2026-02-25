@@ -1,0 +1,91 @@
+#include "A1solution.h"
+
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+
+namespace {
+void read_mat4_row_major(is& in, mat4& out) {
+    for (int r = 0; r < 4; ++r) {
+        for (int c = 0; c < 4; ++c) {
+            in >> out[c][r];
+        }
+    }
+}
+}
+
+void A1solution::run(const std::string& fname) {
+    std::ifstream ifs(fname);
+    if (!ifs.is_open()) {
+        std::cerr << "Couldn't open " << fname << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+
+    p_mv(ifs);
+    p_proj(ifs);
+    p_dis(ifs);
+    p_vert(ifs);
+    p_tri(ifs);
+
+    dump_state();
+}
+
+void A1solution::p_mv(is& in) {
+    read_mat4_row_major(in, modelview);
+}
+
+void A1solution::p_proj(is& in) {
+    read_mat4_row_major(in, projection);
+}
+
+void A1solution::p_dis(is& in) {
+    in >> width >> height;
+}
+
+void A1solution::p_vert(is& in) {
+    size_t n = 0;
+    in >> n;
+
+    vertices.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+        in >> vertices[i].x >> vertices[i].y >> vertices[i].z;
+    }
+}
+
+void A1solution::p_tri(is& in) {
+    size_t n = 0;
+    in >> n;
+
+    triangles.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+        in >> triangles[i].x >> triangles[i].y >> triangles[i].z;
+    }
+}
+
+void A1solution::dump_state(std::ostream& out) const {
+    out << "modelview:\n";
+    for (int r = 0; r < 4; ++r) {
+        for (int c = 0; c < 4; ++c) {
+            out << modelview[c][r] << ((c == 3) ? '\n' : ' ');
+        }
+    }
+
+    out << "projection:\n";
+    for (int r = 0; r < 4; ++r) {
+        for (int c = 0; c < 4; ++c) {
+            out << projection[c][r] << ((c == 3) ? '\n' : ' ');
+        }
+    }
+
+    out << "display: " << width << " " << height << '\n';
+
+    out << "vertices (" << vertices.size() << "):\n";
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        out << i << ": " << vertices[i].x << " " << vertices[i].y << " " << vertices[i].z << '\n';
+    }
+
+    out << "triangles (" << triangles.size() << "):\n";
+    for (size_t i = 0; i < triangles.size(); ++i) {
+        out << i << ": " << triangles[i].x << " " << triangles[i].y << " " << triangles[i].z << '\n';
+    }
+}
