@@ -40,4 +40,5 @@ private:
     std::vector<vec3> vertices{};
     std::vector<vec3i> triangles{};
     std::vector<GLfloat> normal_vertices{};
+    //4u
 };
