@@ -26,7 +26,6 @@ private:
     void c_nv();
     void s_rend();
     int compileAndLinkShaders(const std::string& vertexShaderSource, const std::string& fragmentShaderSource);
-    std::string loadTextFile(const std::string& path) const;
     void createRenderingData(
         GLuint& VAO,
         GLuint& VBO,
