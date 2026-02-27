@@ -37,7 +37,7 @@ s_rend();
 void A1solution::p_mv(is& in){
     for (int r = 0; r < 4; ++r) {
         for (int c = 0; c < 4; ++c) {
-            in >> modelview[c][r];
+            in >> modelview[r][c];
         }
     }
 }
@@ -45,7 +45,7 @@ void A1solution::p_mv(is& in){
 void A1solution::p_proj(is& in){
     for (int r = 0; r < 4; ++r) {
         for (int c = 0; c < 4; ++c) {
-            in >> projection[c][r];
+            in >> projection[r][c];
         }
     }
 }
@@ -113,39 +113,6 @@ void A1solution::c_nv(){
     }
 }
 
-void A1solution::dump_state(std::ostream& out) const {
-    out << "modelview:\n";
-    for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
-            out << modelview[c][r] << ((c == 3) ? '\n' : ' ');
-        }
-    }
-
-    out << "projection:\n";
-    for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
-            out << projection[c][r] << ((c == 3) ? '\n' : ' ');
-        }
-    }
-
-    out << "display: " << width << " " << height << '\n';
-
-    out << "vertices (" << vertices.size() << "):\n";
-    for (size_t i = 0; i < vertices.size(); ++i) {
-        out << i << ": "
-            << vertices[i].x << " "
-            << vertices[i].y << " "
-            << vertices[i].z << '\n';
-    }
-
-    out << "triangles (" << triangles.size() << "):\n";
-    for (size_t i = 0; i < triangles.size(); ++i) {
-        out << i << ": "
-            << triangles[i].x << " "
-            << triangles[i].y << " "
-            << triangles[i].z << '\n';
-    }
-}
 
 void A1solution::s_rend(){
     // auto debug_gl = [](uint32_t place) {};
@@ -180,20 +147,41 @@ void A1solution::s_rend(){
 
     glClearColor(0.5f,0.5f,0.5f,1.0f);
 
-    const std::string phongVertexSource = loadTextFile("src/phongVertShad.glsl");
-    const std::string phongFragmentSource = loadTextFile("src/phongFragShad.glsl");
+    const std::string phongVertexSource = loadTextFile("../src/phongVertShad.glsl");
+    const std::string phongFragmentSource = loadTextFile("../src/phongFragShad.glsl");
     int vertexColorPhong =
         compileAndLinkShaders(phongVertexSource, phongFragmentSource);
+
+    const std::string flatVertexSource = loadTextFile("../src/FlatVertShad.glsl");
+    const std::string flatFragmentSource = loadTextFile("../src/FlatFragShad.glsl");
+    int flatProgram =
+        compileAndLinkShaders(flatVertexSource, flatFragmentSource);
+
+    const std::string circleVertexSource = loadTextFile("../src/CircleVertShad.glsl");
+    const std::string circleFragmentSource = loadTextFile("../src/CircleFragShad.glsl");
+    int circleProgram =
+        compileAndLinkShaders(circleVertexSource, circleFragmentSource);
+
+    const std::string vorVertexSource = loadTextFile("../src/VorVertShad.glsl");
+    const std::string vorFragmentSource = loadTextFile("../src/VorFragShad.glsl");
+    int vorProgram =
+        compileAndLinkShaders(vorVertexSource, vorFragmentSource);
    
 
     //debug_gl(0);
 
-    GLuint VAO, VBO, EBO;
-    createRenderingData(VAO,VBO,EBO);
+    GLuint VAO, VBO, EBO, PBO[3];
+    createRenderingData(VAO,VBO,PBO,EBO);
 
     glViewport(0,0,width,height);
     bool wireframe = false;
     bool w_was_down = false;
+    bool s_was_down = false;
+    int shaderMode = 0; // 0=phong, 1=flat, 2=circle, 3=voronoi
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glClearDepth(1.0);
 
     while(!glfwWindowShouldClose(window.get()))
     {
@@ -204,25 +192,41 @@ void A1solution::s_rend(){
         }
         w_was_down = w_down;
 
+        const bool s_down = glfwGetKey(window.get(), GLFW_KEY_S) == GLFW_PRESS;
+        if (s_down && !s_was_down) {
+            shaderMode = (shaderMode + 1) % 4;
+        }
+        s_was_down = s_down;
+
         // Each frame, reset color of each pixel to glClearColor
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(vertexColorPhong);
+        int activeProgram = vertexColorPhong;
+        if (shaderMode == 1) {
+            activeProgram = flatProgram;
+        } else if (shaderMode == 2) {
+            activeProgram = circleProgram;
+        } else if (shaderMode == 3) {
+            activeProgram = vorProgram;
+        }
+        glUseProgram(activeProgram);
 
-        glUniformMatrix4fv(glGetUniformLocation(vertexColorPhong, "modelview"),
+        glUniformMatrix4fv(glGetUniformLocation(activeProgram, "modelview"),
             1, GL_FALSE, glm::value_ptr(modelview));
-        glUniformMatrix4fv(glGetUniformLocation(vertexColorPhong, "projection"),
+        glUniformMatrix4fv(glGetUniformLocation(activeProgram, "projection"),
             1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(glGetUniformLocation(vertexColorPhong,"objcol"),0.5f,0.5f,0.5f);
-        const glm::vec4 lightPosWorld(2.0f, 2.0f, -2.0f, 1.0f);
-        const glm::vec3 lightPosView = glm::vec3(modelview * lightPosWorld);
-        glUniform3fv(glGetUniformLocation(vertexColorPhong, "lPos"),
-            1, glm::value_ptr(lightPosView));
-        glUniform3f(glGetUniformLocation(vertexColorPhong, "lcol"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(vertexColorPhong, "ka"), 0.1f, 0.05f, 0.05f);
-        glUniform3f(glGetUniformLocation(vertexColorPhong, "kd"), 1.0f, 0.5f, 0.5f);
-        glUniform3f(glGetUniformLocation(vertexColorPhong, "ks"), 0.3f, 0.3f, 0.3f);
-        glUniform1f(glGetUniformLocation(vertexColorPhong, "e"), 5.0f);
+        glUniform3f(glGetUniformLocation(activeProgram, "objcol"), 1.0f, 1.0f, 1.0f);
+        // alternative function to get lightpos into the correct position
+        // const glm::vec4 lightPosWorld(0.0f, 0.0f, 0.0f, 1.0f);
+        // const glm::vec3 lightPosView = glm::vec3(modelview * lightPosWorld);
+        // glUniform3fv(glGetUniformLocation(activeProgram, "lPos"),
+        //     1, glm::value_ptr(lightPosView));
+        glUniform3f(glGetUniformLocation(activeProgram, "lPos"), 0.0f, 0.0f, 0.0f);
+        glUniform3f(glGetUniformLocation(activeProgram, "lcol"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(activeProgram, "ka"), 0.1f, 0.05f, 0.05f);
+        glUniform3f(glGetUniformLocation(activeProgram, "kd"), 1.0f, 0.5f, 0.5f);
+        glUniform3f(glGetUniformLocation(activeProgram, "ks"), 0.3f, 0.3f, 0.3f);
+        glUniform1f(glGetUniformLocation(activeProgram, "e"), 5.0f);
 
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
 
@@ -236,10 +240,6 @@ void A1solution::s_rend(){
         if (glfwGetKey(window.get(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window.get(), true);
         }
-
-        /*if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
-            shaderProgram = voronoiProgram;
-        }*/
     }
 
 }
@@ -302,27 +302,72 @@ int A1solution::compileAndLinkShaders(const std::string& vertexShaderSource,
         return shaderProgram;
      }
 
-    void A1solution::createRenderingData(GLuint& VAO, GLuint& VBO,
+    void A1solution::createRenderingData(GLuint& VAO, GLuint& VBO, GLuint PBO[3],
         GLuint& EBO){
             glGenVertexArrays(1,&VAO);
             glBindVertexArray(VAO);
 
+            std::vector<GLfloat> expanded_vertices;
+            std::vector<GLfloat> pbo_data[3];
+            std::vector<GLuint> flat_indices;
+
+            expanded_vertices.reserve(triangles.size() * 3 * 6);
+            for (int i = 0; i < 3; ++i) {
+                pbo_data[i].reserve(triangles.size() * 3 * 3);
+            }
+            flat_indices.reserve(triangles.size() * 3);
+
+            GLuint running_index = 0;
+            for (const auto& tri : triangles) {
+                const GLuint ids[3] = {
+                    tri.x,
+                    tri.y,
+                    tri.z
+                };
+
+                const vec3 tri_pts[3] = {
+                    vertices[ids[0]],
+                    vertices[ids[1]],
+                    vertices[ids[2]]
+                };
+
+                for (int corner = 0; corner < 3; ++corner) {
+                    const GLuint vid = ids[corner];
+                    const vec3& pos = vertices[vid];
+
+                    expanded_vertices.push_back(pos.x);
+                    expanded_vertices.push_back(pos.y);
+                    expanded_vertices.push_back(pos.z);
+                    expanded_vertices.push_back(normal_vertices[3 * vid + 0]);
+                    expanded_vertices.push_back(normal_vertices[3 * vid + 1]);
+                    expanded_vertices.push_back(normal_vertices[3 * vid + 2]);
+
+                    for (int p = 0; p < 3; ++p) {
+                        pbo_data[p].push_back(tri_pts[p].x);
+                        pbo_data[p].push_back(tri_pts[p].y);
+                        pbo_data[p].push_back(tri_pts[p].z);
+                    }
+
+                    flat_indices.push_back(running_index++);
+                }
+            }
+
             glGenBuffers(1,&VBO);
             glBindBuffer(GL_ARRAY_BUFFER,VBO);
-            const std::vector<GLfloat> interleaved = interleave();
-            glBufferData(GL_ARRAY_BUFFER, interleaved.size()*sizeof(GLfloat),
-                interleaved.data(),GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, expanded_vertices.size()*sizeof(GLfloat),
+                expanded_vertices.data(),GL_STATIC_DRAW);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)0);
                 glEnableVertexAttribArray(0);
             glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(3*sizeof(GLfloat)));
                 glEnableVertexAttribArray(1);
 
-            std::vector<GLuint> flat_indices;
-            flat_indices.reserve(triangles.size() * 3);
-            for (const auto& t : triangles) {
-                flat_indices.push_back(t.x);
-                flat_indices.push_back(t.y);
-                flat_indices.push_back(t.z);
+            glGenBuffers(3, PBO);
+            for (int p = 0; p < 3; ++p) {
+                glBindBuffer(GL_ARRAY_BUFFER, PBO[p]);
+                glBufferData(GL_ARRAY_BUFFER, pbo_data[p].size() * sizeof(GLfloat),
+                    pbo_data[p].data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(2 + p, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+                glEnableVertexAttribArray(2 + p);
             }
 
             glGenBuffers(1,&EBO);
@@ -332,20 +377,4 @@ int A1solution::compileAndLinkShaders(const std::string& vertexShaderSource,
 
             glBindBuffer(GL_ARRAY_BUFFER,0);
             glBindVertexArray(0);
-    }
-
-    std::vector<GLfloat> A1solution::interleave() const{
-        std::vector<GLfloat> interleaved;
-        interleaved.reserve(vertices.size() * 6);
-
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            interleaved.push_back(vertices[i].x);
-            interleaved.push_back(vertices[i].y);
-            interleaved.push_back(vertices[i].z);
-
-            interleaved.push_back(normal_vertices[3*i + 0]);
-            interleaved.push_back(normal_vertices[3*i + 1]);
-            interleaved.push_back(normal_vertices[3*i + 2]);
-        }
-        return interleaved;
     }
