@@ -1,0 +1,41 @@
+#pragma once
+
+//STL
+#include <string>
+#include <iostream>
+#include <array>
+#include <vector>
+#include <cstdint>
+#include <istream>
+
+using vec3 = std::array<GLfloat,3>;
+using vec3i = std::array<GLuint,3>;
+using mat4 = std::array<GLfloat,16>;
+using is = std::istream;
+
+class A1solution{
+public:
+
+A1solution()=default;
+void run(const std::string& fname);
+void dump_state(std::ostream& out = std::cout) const;
+
+private:
+//private functions
+void p_mv(is& in);
+void p_proj(is& in);
+void p_dis(is& in);
+void p_vert(is& in);
+void p_tri(is& in);
+void s_rend();
+GLint A1solution::compileAndLinkShaders(const std::string& vertexShaderSource,
+     const std::string& fragmentShaderSource);
+//private members
+mat4 modelview;
+mat4 projection;
+GLint width;
+GLint height;
+std::vector<vec3> vertices;
+std::vector<vec3i> triangles;
+
+};

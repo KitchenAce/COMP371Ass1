@@ -1,0 +1,29 @@
+{
+  "cmake.configureArgs": [
+    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+  ],
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": true
+  },
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.inlineSuggest.enabled": false,
+  "editor.wordBasedSuggestions": "on",
+  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.autocomplete": "Default",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+  "C_Cpp.default.defines": [
+    "STUDENT_SOLUTION"
+  ],
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/**",
+    "/opt/homebrew/include",
+    "/usr/local/include",
+    "/opt/homebrew/opt/glfw/include",
+    "/opt/homebrew/opt/glew/include",
+    "/usr/local/opt/glfw/include",
+    "/usr/local/opt/glew/include"
+  ]
+}

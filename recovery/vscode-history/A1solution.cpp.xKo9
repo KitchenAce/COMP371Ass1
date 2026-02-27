@@ -1,0 +1,202 @@
+#include "A1solution.h"
+
+//STL
+#include <fstream>
+#include <iostream>
+#include <cstdlib>
+#include <memory>
+#include <array>
+
+//OpenGL
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
+void A1solution::run(const std::string& fname){
+std::ifstream ifs(fname);
+if(!ifs.is_open()){
+    std::cerr<<"Couldn't open "<<fname<<std::endl;
+    exit(EXIT_FAILURE);
+}
+
+p_mv(ifs);
+p_proj(ifs);
+p_dis(ifs);
+p_vert(ifs);
+p_tri(ifs);
+
+dump_state();
+
+
+
+}
+
+void A1solution::p_mv(is& in){
+    for(size_t i=0;i<16;++i){
+        in>>modelview[i];
+    }
+}
+
+void A1solution::p_proj(is& in){
+    for(size_t i=0;i<16;++i){
+        in>>projection[i];
+    }
+}
+
+void A1solution::p_dis(is& in){
+    in>>width;
+    in>>height;
+}
+
+void A1solution::p_vert(is& in){
+    size_t n;
+    in>>n;
+    vertices.resize(n*3);
+    for(size_t i=0;i<n*3;++i){
+        in>>vertices[i];
+    }
+}
+
+void A1solution::p_tri(is& in){
+    size_t n;
+    in>>n;
+    triangles.resize(n*3);
+    for(size_t i=0;i<n*3;++i){
+       in>>vertices[1];
+    }
+}
+
+void A1solution::dump_state(std::ostream& out) const {
+    out << "modelview:\n";
+    for (size_t i = 0; i < modelview.size(); ++i) {
+        out << modelview[i] << ((i % 4 == 3) ? '\n' : ' ');
+    }
+
+    out << "projection:\n";
+    for (size_t i = 0; i < projection.size(); ++i) {
+        out << projection[i] << ((i % 4 == 3) ? '\n' : ' ');
+    }
+
+    out << "display: " << width << " " << height << '\n';
+
+    out << "vertices (" << vertices.size() << "):\n";
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        out << i << ": "
+            << vertices[i][0] << " "
+            << vertices[i][1] << " "
+            << vertices[i][2] << '\n';
+    }
+
+    out << "triangles (" << triangles.size() << "):\n";
+    for (size_t i = 0; i < triangles.size(); ++i) {
+        out << i << ": "
+            << triangles[i][0] << " "
+            << triangles[i][1] << " "
+            << triangles[i][2] << '\n';
+    }
+}
+
+void A1solution::s_rend(){
+    auto debug_gl=[](uint32_t place)
+    
+    glfwInit();
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+
+    //Creating Window
+    /*I've been looking for an opportunity to learn how to use smart pointers.
+    I'm not even pretending that this is optimal*/
+    auto window = std::unique_ptr<GLFWwindow, decltype(&glfwDestroyWindow)>
+        (glfwCreateWindow(width,height,"COMP371-Assignment1",NULL,NULL),glfwDestroyWindow);
+
+    if(window==NULL){
+        std::cerr<<"Failed to create GLFW window"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    glfwMakeContextCurrent(window.get());
+
+    glewExperimental=true;
+
+    if(glewInit()!=GLEW_OK){
+        std::cerr<<"Failed to create GLEW"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    glClearColor(0.0f,0.0f,0.0f,1.0f);
+
+    /*introduce shader section here
+    
+    int vertexColorProgram = 
+        compileAndLinkShaders(getVertexShaderSource(), getFragmentShaderSource());
+    int voronoiProgram = 
+        compileAndLinkShaders(getVertexShaderSource2(), getFragmentShaderSource2());
+    int shaderProgram = voronoiProgram;
+        
+    end here!*/
+
+    //debug_gl(0);
+
+    GLuint VAO, VBO, CBO, EBO;
+    vec3i PBO{};
+
+}
+
+GLint A1solution::compileAndLinkShaders(const GLchar* vertexShaderSource,
+     const GLchar* fragmentShaderSource){
+        
+        int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader,1,&vertexShaderSource,NULL);
+        glCompileShader(vertexShader);
+
+        int success;
+        GLchar infoLog[512];
+
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+        if(!success){
+            glGetShaderInfoLog(vertexShader,512,NULL,infoLog);
+            std::cerr<<"ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"<<
+                infoLog<<std::endl;
+        }
+
+        GLint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+        glCompileShader(fragmentShader);
+
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+
+        GLint shaderProgram = glCreateProgram();
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+        glLinkProgram(shaderProgram);
+
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+        if (!success) {
+            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        }
+
+
+        return shaderProgram;
+     }
+
+    void A1solution::createRenderingData(GLuint& VAO, GLuint& VBO,
+        GLuint& CBO, GLuint PBO[], GLuint& EBO){
+            GLfloat color[]{};///figureout later
+
+            glGenVertexArrays(1,&VAO);
+
+            glGenBuffers(1,&VBO);
+            glBindBuffer(GL_ARRAY_BUFFER,VBO);
+            glBufferData(GL_ARRAY_BUFFER, vertices.size()*3*sizeof(GLfloat),
+        vertices,GL_STATIC_DRAW);
+        }
+
